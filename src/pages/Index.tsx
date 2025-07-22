@@ -1,10 +1,10 @@
-
 import { useState } from 'react';
 import { AuthProvider, useAuth } from '@/components/auth/AuthProvider';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { SignUpForm } from '@/components/auth/SignUpForm';
 import { EventCalendar } from '@/components/events/EventCalendar';
 import { Header } from '@/components/layout/Header';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 const AuthWrapper = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -39,7 +39,9 @@ const AuthWrapper = () => {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8">
-        <EventCalendar />
+        <ProtectedRoute>
+          <EventCalendar />
+        </ProtectedRoute>
       </main>
     </div>
   );
