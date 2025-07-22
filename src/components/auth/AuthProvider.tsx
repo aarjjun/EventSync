@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { User } from '@supabase/supabase-js';
@@ -44,10 +43,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.error('Error getting session:', error);
         }
-        
         if (session?.user) {
           setUser(session.user);
-          await fetchProfile(session.user.id);
+          // Don't await fetchProfile, set loading false immediately
+          fetchProfile(session.user.id);
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error);
@@ -62,20 +61,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state changed:', event, session?.user?.id);
-        
         if (session?.user) {
           setUser(session.user);
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            await fetchProfile(session.user.id);
-          }
+          fetchProfile(session.user.id);
         } else {
           setUser(null);
           setProfile(null);
         }
-        
-        if (event === 'SIGNED_OUT') {
-          setLoading(false);
-        }
+        // Always set loading to false after any auth event
+        setLoading(false);
       }
     );
 
