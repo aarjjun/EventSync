@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -21,8 +20,12 @@ interface Event {
   description: string;
   status: 'pending' | 'approved' | 'rejected';
   datetime: string;
+  end_datetime?: string;
   poster_url?: string;
   created_by: string;
+  suggested_datetime?: string;
+  suggested_end_datetime?: string;
+  suggestion_reason?: string;
 }
 
 export const EventCalendar = () => {
@@ -98,6 +101,7 @@ export const EventCalendar = () => {
     id: event.id,
     title: event.title,
     start: event.datetime,
+    end: event.end_datetime,
     backgroundColor: getEventColor(event.status),
     borderColor: getEventColor(event.status),
     extendedProps: event
