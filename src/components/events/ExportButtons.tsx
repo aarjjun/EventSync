@@ -12,8 +12,16 @@ interface Event {
   status: 'pending' | 'approved' | 'rejected';
   datetime: string;
   end_datetime?: string;
+  end_date?: string;
   suggested_datetime?: string;
+  suggested_end_datetime?: string;
   suggestion_reason?: string;
+}
+
+interface MonthData {
+  month: Date;
+  events: Event[];
+  label: string;
 }
 
 interface ExportButtonsProps {
@@ -29,8 +37,6 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
     
     // Filter events for current and future months only
     const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
     const futureEvents = events.filter(event => {
       const eventDate = new Date(event.datetime);
       return eventDate >= currentDate;
@@ -52,25 +58,25 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
     
     let yPosition = 70;
     
-    // Summary cards with better contrast
+    // Summary cards
     const cardWidth = (pageWidth - 3 * margin) / 2;
     const cardHeight = 35;
     
     // Total events card
-    doc.setFillColor(241, 245, 249); // Light gray background
+    doc.setFillColor(241, 245, 249);
     doc.rect(margin, yPosition, cardWidth, cardHeight, 'F');
-    doc.setDrawColor(203, 213, 225); // Border
+    doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(1);
     doc.rect(margin, yPosition, cardWidth, cardHeight);
     
-    doc.setTextColor(30, 58, 138); // Dark blue
+    doc.setTextColor(30, 58, 138);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
     doc.text(futureEvents.length.toString(), margin + 15, yPosition + 15);
     
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
-    doc.setTextColor(71, 85, 105); // Gray
+    doc.setTextColor(71, 85, 105);
     doc.text('Total Events', margin + 15, yPosition + 27);
     
     // Status breakdown card
@@ -80,23 +86,22 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
     }, {} as Record<string, number>);
     
     doc.setFillColor(241, 245, 249);
-    doc.rect(margin + cardWidth + 10, yPosition, cardWidth, cardHeight, 'F');
-    doc.rect(margin + cardWidth + 10, yPosition, cardWidth, cardHeight);
+    doc.rect(margin + cardWidth + 10, yPosition , cardWidth, cardHeight, 'F');
+    doc.rect(margin + cardWidth + 10, yPosition , cardWidth, cardHeight);
     
     doc.setTextColor(30, 58, 138);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(12);
-    doc.text('Status Summary', margin + cardWidth + 25, yPosition + 12);
+    doc.text('Status Summary', margin + cardWidth + 35, yPosition +5);
     
-    let statusY = yPosition + 22;
+    let statusY = yPosition + 10;
     Object.entries(statusCounts).forEach(([status, count]) => {
-      // Status indicators with better colors
       if (status === 'approved') {
-        doc.setFillColor(34, 197, 94); // Green
+        doc.setFillColor(34, 197, 94);
       } else if (status === 'rejected') {
-        doc.setFillColor(239, 68, 68); // Red
+        doc.setFillColor(239, 68, 68);
       } else {
-        doc.setFillColor(245, 158, 11); // Amber
+        doc.setFillColor(245, 158, 11);
       }
       doc.circle(margin + cardWidth + 25, statusY - 2, 2, 'F');
       
@@ -117,15 +122,15 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
     
     yPosition += 20;
     
-    // Get next 6 months starting from current month
-    const monthsToShow = [];
-    for (let i = 0; i < 6; i++) {
-      const month = new Date(currentYear, currentMonth + i, 1);
-      monthsToShow.push(month);
-    }
+    // Get current and next month only
+    const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    const monthsToShow = [currentMonth, nextMonth];
     
     // Group events by month
-    const eventsByMonth = monthsToShow.reduce((acc, month) => {
+    const eventsByMonth: Record<string, MonthData> = {};
+    
+    monthsToShow.forEach(month => {
       const monthKey = `${month.getFullYear()}-${month.getMonth()}`;
       const monthEvents = futureEvents.filter(event => {
         const eventDate = new Date(event.datetime);
@@ -133,20 +138,15 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
                eventDate.getFullYear() === month.getFullYear();
       });
       
-      acc[monthKey] = {
+      eventsByMonth[monthKey] = {
         month,
         events: monthEvents,
         label: month.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
       };
-      return acc;
-    }, {} as Record<string, { month: Date; events: Event[]; label: string }>);
+    });
     
-    // Render each month (only if there are events)
-    Object.values(eventsByMonth).forEach((monthData: { month: Date; events: Event[]; label: string }, index) => {
-      if (monthData.events.length === 0) {
-        // Skip months with no events
-        return;
-      }
+    // Render each month
+    Object.values(eventsByMonth).forEach((monthData, index) => {
       if (index > 0 && yPosition > pageHeight - 150) {
         doc.addPage();
         yPosition = 30;
@@ -202,7 +202,6 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
           const x = margin + day * cellWidth;
           const y = yPosition + weekCount * cellHeight;
           
-          // Alternating background
           if (weekCount % 2 === 0) {
             doc.setFillColor(255, 255, 255);
           } else {
@@ -210,7 +209,6 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
           }
           doc.rect(x, y, cellWidth, cellHeight, 'F');
           
-          // Cell border
           doc.setDrawColor(226, 232, 240);
           doc.setLineWidth(0.3);
           doc.rect(x, y, cellWidth, cellHeight);
@@ -223,7 +221,6 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
             break;
           }
           
-          // Day number
           doc.setTextColor(51, 65, 85);
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
@@ -270,10 +267,10 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
           
           // Event card
           doc.setFillColor(248, 250, 252);
-          doc.rect(margin, yPosition, pageWidth - 2 * margin, 35, 'F');
+          doc.rect(margin, yPosition, pageWidth - 2 * margin, 45, 'F');
           doc.setDrawColor(203, 213, 225);
           doc.setLineWidth(0.5);
-          doc.rect(margin, yPosition, pageWidth - 2 * margin, 35);
+          doc.rect(margin, yPosition, pageWidth - 2 * margin, 45);
           
           // Status stripe
           if (event.status === 'approved') {
@@ -283,7 +280,7 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
           } else {
             doc.setFillColor(245, 158, 11);
           }
-          doc.rect(margin, yPosition, 5, 35, 'F');
+          doc.rect(margin, yPosition, 5, 45, 'F');
           
           // Event title
           doc.setFont('helvetica', 'bold');
@@ -310,20 +307,32 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           
-          const eventDate = new Date(event.datetime);
-          const timeStr = eventDate.toLocaleString('en-US', {
+          const startDate = new Date(event.datetime);
+          const startTimeStr = startDate.toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
           });
           
-          // Replace emojis with plain text
-          doc.text(`Date/Time: ${timeStr}`, margin + 10, yPosition + 20);
-          doc.text(`Community: ${event.community}`, margin + 10, yPosition + 28);
-          doc.text(`Type: ${event.type}`, margin + 120, yPosition + 28);
+          doc.text(`Event Start Date: ${startTimeStr}`, margin + 10, yPosition + 22);
           
-          yPosition += 45;
+          // Show end date if available
+          if (event.end_datetime || event.end_date) {
+            const endDate = new Date(event.end_datetime || event.end_date!);
+            const endTimeStr = endDate.toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            doc.text(`Event End Date: ${endTimeStr}`, margin + 10, yPosition + 32);
+          }
+          
+          doc.text(`Community: ${event.community}`, margin + 120, yPosition + 22);
+          doc.text(`Event Type: ${event.type}`, margin + 120, yPosition + 32);
+          
+          yPosition += 55;
         });
       }
       
@@ -352,10 +361,11 @@ export const ExportButtons = ({ events }: ExportButtonsProps) => {
       'Community': event.community,
       'Type': event.type,
       'Start Date & Time': new Date(event.datetime).toLocaleString(),
-      'End Date & Time': event.end_datetime ? new Date(event.end_datetime).toLocaleString() : '',
+      'End Date & Time': event.end_datetime || event.end_date ? new Date(event.end_datetime || event.end_date!).toLocaleString() : '',
       'Status': event.status.toUpperCase(),
       'Description': event.description || '',
-      'Suggested Date/Time': event.suggested_datetime ? new Date(event.suggested_datetime).toLocaleString() : '',
+      'Suggested Start Date/Time': event.suggested_datetime ? new Date(event.suggested_datetime).toLocaleString() : '',
+      'Suggested End Date/Time': event.suggested_end_datetime ? new Date(event.suggested_end_datetime).toLocaleString() : '',
       'Suggestion Reason': event.suggestion_reason || '',
     }));
 

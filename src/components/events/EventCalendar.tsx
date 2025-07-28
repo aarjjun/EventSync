@@ -24,7 +24,6 @@ interface Event {
   poster_url?: string;
   created_by: string;
   suggested_datetime?: string;
-  suggested_end_datetime?: string;
   suggestion_reason?: string;
 }
 

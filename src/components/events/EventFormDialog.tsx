@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Clock } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,9 +28,12 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
     type: '',
     customType: '',
     description: '',
-    date: undefined as Date | undefined,
-    time: '',
-    ampm: 'AM',
+    startDate: undefined as Date | undefined,
+    endDate: undefined as Date | undefined,
+    startTime: '',
+    startAmpm: 'AM',
+    endTime: '',
+    endAmpm: 'AM',
     poster: null as File | null
   });
   const [loading, setLoading] = useState(false);
@@ -73,9 +76,38 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
     }
   };
 
+  const parseTime = (timeString: string, ampm: string) => {
+    const [hours, minutes] = timeString.split(':');
+    let hour24 = parseInt(hours);
+    if (ampm === 'PM' && hour24 !== 12) hour24 += 12;
+    if (ampm === 'AM' && hour24 === 12) hour24 = 0;
+    return { hour: hour24, minute: parseInt(minutes) };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.date || !formData.time) return;
+    if (!user || !formData.startDate || !formData.startTime) return;
+
+    // Validate end date/time if provided
+    if (formData.endDate && formData.endTime) {
+      const startTime = parseTime(formData.startTime, formData.startAmpm);
+      const endTime = parseTime(formData.endTime, formData.endAmpm);
+      
+      const startDateTime = new Date(formData.startDate);
+      startDateTime.setHours(startTime.hour, startTime.minute);
+      
+      const endDateTime = new Date(formData.endDate);
+      endDateTime.setHours(endTime.hour, endTime.minute);
+      
+      if (endDateTime <= startDateTime) {
+        toast({
+          title: "Error",
+          description: "End date/time must be after start date/time",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     setLoading(true);
 
@@ -86,30 +118,37 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
         posterUrl = await uploadPoster(formData.poster);
       }
 
-      // Combine date and time
-      const [hours, minutes] = formData.time.split(':');
-      let hour24 = parseInt(hours);
-      if (formData.ampm === 'PM' && hour24 !== 12) hour24 += 12;
-      if (formData.ampm === 'AM' && hour24 === 12) hour24 = 0;
+      // Create start datetime
+      const startTime = parseTime(formData.startTime, formData.startAmpm);
+      const eventDateTime = new Date(formData.startDate);
+      eventDateTime.setHours(startTime.hour, startTime.minute);
 
-      const eventDateTime = new Date(formData.date);
-      eventDateTime.setHours(hour24, parseInt(minutes));
+      // Create end datetime if provided
+      let endDateTime = null;
+      if (formData.endDate && formData.endTime) {
+        const endTime = parseTime(formData.endTime, formData.endAmpm);
+        endDateTime = new Date(formData.endDate);
+        endDateTime.setHours(endTime.hour, endTime.minute);
+      }
 
       // Determine final community and type values
       const finalCommunity = formData.community === 'Other' ? formData.customCommunity : formData.community;
       const finalType = formData.type === 'Other' ? formData.customType : formData.type;
 
+      const eventData = {
+        title: formData.title,
+        community: finalCommunity,
+        type: finalType,
+        description: formData.description,
+        datetime: eventDateTime.toISOString(),
+        poster_url: posterUrl,
+        created_by: user.id,
+        ...(endDateTime && { end_datetime: endDateTime.toISOString() })
+      };
+
       const { error } = await supabase
         .from('events')
-        .insert({
-          title: formData.title,
-          community: finalCommunity,
-          type: finalType,
-          description: formData.description,
-          datetime: eventDateTime.toISOString(),
-          poster_url: posterUrl,
-          created_by: user.id,
-        });
+        .insert(eventData);
 
       if (error) throw error;
 
@@ -211,27 +250,26 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Event Date</Label>
+              <Label>Start Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
                       "w-full justify-start text-left font-normal",
-                      !formData.date && "text-muted-foreground"
+                      !formData.startDate && "text-muted-foreground"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.date ? format(formData.date, "PPP") : "Pick a date"}
+                    {formData.startDate ? format(formData.startDate, "PPP") : "Pick start date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
-                    selected={formData.date}
-                    onSelect={(date) => setFormData(prev => ({ ...prev, date }))}
+                    selected={formData.startDate}
+                    onSelect={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
                     initialFocus
-                    className="pointer-events-auto"
                     disabled={(date) => date < new Date()}
                   />
                 </PopoverContent>
@@ -239,18 +277,71 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
             </div>
 
             <div>
-              <Label>Event Time</Label>
+              <Label>End Date (Optional)</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.endDate ? format(formData.endDate, "PPP") : "Pick end date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={formData.endDate}
+                    onSelect={(date) => setFormData(prev => ({ ...prev, endDate: date }))}
+                    initialFocus
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Start Time</Label>
               <div className="flex gap-2">
                 <Input
                   type="time"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange('time', e.target.value)}
+                  value={formData.startTime}
+                  onChange={(e) => handleInputChange('startTime', e.target.value)}
                   className="flex-1"
                   required
                 />
                 <Select
-                  value={formData.ampm}
-                  onValueChange={(value) => handleInputChange('ampm', value)}
+                  value={formData.startAmpm}
+                  onValueChange={(value) => handleInputChange('startAmpm', value)}
+                >
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="PM">PM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>End Time (Optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="time"
+                  value={formData.endTime}
+                  onChange={(e) => handleInputChange('endTime', e.target.value)}
+                  className="flex-1"
+                />
+                <Select
+                  value={formData.endAmpm}
+                  onValueChange={(value) => handleInputChange('endAmpm', value)}
                 >
                   <SelectTrigger className="w-20">
                     <SelectValue />

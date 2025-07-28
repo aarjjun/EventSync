@@ -21,9 +21,14 @@ export type Database = {
           created_by: string
           datetime: string
           description: string | null
+          end_date: string | null
+          end_datetime: string | null
           id: string
           poster_url: string | null
           status: Database["public"]["Enums"]["event_status"]
+          suggested_datetime: string | null
+          suggested_end_datetime: string | null
+          suggestion_reason: string | null
           title: string
           type: string
           updated_at: string | null
@@ -34,9 +39,14 @@ export type Database = {
           created_by: string
           datetime: string
           description?: string | null
+          end_date?: string | null
+          end_datetime?: string | null
           id?: string
           poster_url?: string | null
           status?: Database["public"]["Enums"]["event_status"]
+          suggested_datetime?: string | null
+          suggested_end_datetime?: string | null
+          suggestion_reason?: string | null
           title: string
           type: string
           updated_at?: string | null
@@ -47,9 +57,14 @@ export type Database = {
           created_by?: string
           datetime?: string
           description?: string | null
+          end_date?: string | null
+          end_datetime?: string | null
           id?: string
           poster_url?: string | null
           status?: Database["public"]["Enums"]["event_status"]
+          suggested_datetime?: string | null
+          suggested_end_datetime?: string | null
+          suggestion_reason?: string | null
           title?: string
           type?: string
           updated_at?: string | null

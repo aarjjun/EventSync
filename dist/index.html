@@ -11,15 +11,21 @@
     <meta property="og:description" content="Departmental Event Management System" />
     <meta property="og:type" content="website" />
 
-    <meta name="theme-color" content="#0f172a" />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <script type="module" crossorigin src="/assets/index-DBQ4MExt.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CRI8fldq.css">
+    <meta name="theme-color" content="#1976d2" />
+    <link rel="icon" href="/icon-512.png" />
+    <script type="module" crossorigin src="/assets/index-2ca1mSIJ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DY4h4ds3.css">
   </head>
 
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/service-worker.js');
+        });
+      }
+    </script>
   </body>
 </html>
