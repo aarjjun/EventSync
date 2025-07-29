@@ -117,7 +117,7 @@ export const EventCalendar = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold">Event Calendar</h1>
         <div className="flex flex-wrap gap-2">
-          {profile?.role === 'rep' && (
+          {(profile?.role === 'rep' || profile?.role === 'hod') && (
             <Button onClick={() => setShowEventForm(true)}>
               <Plus className="w-4 h-4 mr-2" />
               Add Event
