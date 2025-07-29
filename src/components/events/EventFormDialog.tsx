@@ -37,11 +37,14 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
     poster: null as File | null
   });
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const communities = ['IEEE', 'TinkerHub', 'CoreAI', 'GDSC', 'NSS', 'Other'];
   const eventTypes = ['Workshop', 'Seminar', 'Conference', 'Competition', 'Cultural', 'Technical', 'Other'];
+
+  // Check if user can submit events (both reps and HODs can submit)
+  const canSubmitEvents = profile && (profile.role === 'rep' || profile.role === 'hod');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -86,7 +89,7 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.startDate || !formData.startTime) return;
+    if (!user || !formData.startDate || !formData.startTime || !canSubmitEvents) return;
 
     // Validate end date/time if provided
     if (formData.endDate && formData.endTime) {
@@ -169,6 +172,11 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
       setLoading(false);
     }
   };
+
+  // Don't show the dialog if user doesn't have permission
+  if (!canSubmitEvents) {
+    return null;
+  }
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -270,7 +278,11 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
                     selected={formData.startDate}
                     onSelect={(date) => setFormData(prev => ({ ...prev, startDate: date }))}
                     initialFocus
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -297,13 +309,16 @@ export const EventFormDialog = ({ onClose, onSuccess }: EventFormDialogProps) =>
                     selected={formData.endDate}
                     onSelect={(date) => setFormData(prev => ({ ...prev, endDate: date }))}
                     initialFocus
-                    disabled={(date) => date < new Date()}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      return date < today;
+                    }}
                   />
                 </PopoverContent>
               </Popover>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label>Start Time</Label>
